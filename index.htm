@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Lago - Sleep as a Service (V20)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="authScreen">
+  <div class="auth-box auth-flip-box" id="authFlipBox">
+    <button class="driver-switch-arrow" onclick="showDriverAuth()" title="Mode livreur">↗</button>
+
+    <div class="auth-client-face" id="authClientFace">
+      <h1 style="margin:0 0 5px;font-weight:900;">Lago</h1>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:20px;">Sleep as a Service</p>
+      <button onclick="openGooglePopup()" style="background:#fff;color:#000;display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;padding:12px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.2);">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continuer avec Google
+      </button>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:15px;">ou avec une adresse mail</div>
+      <input type="email" id="loginEmail" class="auth-input" placeholder="Adresse email">
+      <input type="password" id="loginPassword" class="auth-input" placeholder="Mot de passe">
+      <button onclick="handleLoginManual()" style="margin-top:20px;">S'inscrire / Se connecter</button>
+    </div>
+
+    <div class="auth-driver-face" id="authDriverFace">
+      <button class="driver-switch-arrow driver-back-inline" onclick="resetDriverAuth()" title="Retour client">↙</button>
+      <h1 style="margin:0 0 5px;font-weight:900;">Lago</h1>
+      <p style="color:var(--text-dim);font-size:13px;margin-bottom:20px;font-weight:800;letter-spacing:.4px;">Livreur</p>
+
+      <button onclick="openDriverUberPopup()" style="background:#fff;color:#000;display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;padding:12px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.2);">
+        <span class="uber-mini-logo">U</span>
+        Se connecter avec Uber
+      </button>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:15px;">ou avec Lago Livreur</div>
+
+      <div id="driverChoicePanel" class="driver-auth-panel active driver-choice-as-inputs">
+        <button class="driver-auth-input-btn" onclick="showDriverLogin()">Se connecter</button>
+        <button id="driverRegisterChoiceBtn" class="driver-auth-input-btn" onclick="showDriverRegister()">S'inscrire</button>
+      </div>
+
+      <div id="driverLoginPanel" class="driver-auth-panel">
+        <button class="driver-auth-small-back" onclick="showDriverChoice()">← Retour</button>
+        <input type="email" id="driverLoginEmail" class="auth-input" placeholder="Adresse email livreur">
+        <input type="password" id="driverLoginPassword" class="auth-input" placeholder="Mot de passe">
+        <button onclick="submitDriverLogin()" style="margin-top:12px;">Se connecter</button>
+      </div>
+
+      <div id="driverRegisterPanel" class="driver-auth-panel">
+        <button class="driver-auth-small-back" onclick="showDriverChoice()">← Retour</button>
+        <input type="email" id="driverRegisterEmail" class="auth-input" placeholder="Adresse email">
+        <input type="password" id="driverRegisterPassword" class="auth-input" placeholder="Mot de passe">
+        <button onclick="startDriverSignup()" style="margin-top:12px;">S'inscrire</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="captchaModal">
+  <div class="captcha-box">
+    <svg viewBox="0 0 24 24" width="40" height="40" style="margin-bottom:10px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#22c55e"/></svg>
+    <p style="margin:0;font-size:18px;font-weight:900;">Vérification de sécurité</p>
+    <p style="color:#666;font-size:12px;margin-top:5px;">Prouvez que vous êtes humain.</p>
+    <label><input type="checkbox" id="fakeCaptchaCheck" style="transform:scale(1.5);"> Je ne suis pas un robot</label>
+  </div>
+</div>
+
+<div id="googlePopupOverlay">
+  <div class="google-backdrop" onclick="closeGooglePopup(event,true)"></div>
+  <div id="googleSheet">
+    <div style="text-align:center;margin-bottom:20px;">
+      <svg viewBox="0 0 24 24" width="30" height="30" style="margin-bottom:10px;"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      <h3 style="margin:0;font-size:18px;">Choisissez un compte</h3>
+    </div>
+    <button class="google-account-btn" onclick="loginSuccess('client@gmail.com')">
+      <div class="google-avatar">C</div>
+      <div style="flex:1;"><div style="font-weight:bold;font-size:15px;color:#000;">Compte Client (Vierge)</div><div style="color:#666;font-size:13px;">client@gmail.com</div></div>
+    </button>
+    <button class="google-account-btn" onclick="loginSuccess('boss@lago.app')">
+      <div class="google-avatar" style="background:#000;">B</div>
+      <div style="flex:1;"><div style="font-weight:bold;font-size:15px;color:#000;">Lago Admin (Patron)</div><div style="color:#666;font-size:13px;">boss@lago.app</div></div>
+    </button>
+    <button class="google-account-btn" style="border:none;" onclick="closeGooglePopup(event,true)">
+      <div class="google-avatar" style="background:#eee;color:#666;">+</div>
+      <div style="font-weight:bold;font-size:15px;color:#333;">Fermer</div>
+    </button>
+  </div>
+</div>
+
+<div id="driverUberPopupOverlay">
+  <div class="google-backdrop" onclick="closeDriverUberPopup(event,true)"></div>
+  <div id="driverUberSheet">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="uber-sheet-logo">U</div>
+      <h3 style="margin:0;font-size:18px;color:#111827;">Choisissez un compte</h3>
+    </div>
+    <button class="google-account-btn" onclick="driverUberLoginSuccess()">
+      <div class="google-avatar driver-uber-avatar">L</div>
+      <div style="flex:1;"><div style="font-weight:bold;font-size:15px;color:#000;">Compte livreur vierge</div><div style="color:#666;font-size:13px;">livreur.uber@lago.app</div></div>
+    </button>
+    <button class="google-account-btn" style="border:none;" onclick="closeDriverUberPopup(event,true)">
+      <div class="google-avatar" style="background:#eee;color:#666;">+</div>
+      <div style="font-weight:bold;font-size:15px;color:#333;">Fermer</div>
+    </button>
+  </div>
+</div>
+
+<div id="gpsModal">
+  <div style="padding:15px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center;background:var(--bg-main);border-bottom:1px solid var(--glass-border);z-index:20;">
+    <div>
+      <h3 style="margin:0;color:var(--accent-green);">🛵 En route</h3>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">Arrivée estimée : <strong id="etaTimer" style="color:#fff;">--</strong> min</div>
+    </div>
+    <button onclick="document.getElementById('gpsModal').style.display='none'" style="width:40px;height:40px;margin:0;padding:0;border-radius:50%;background:var(--glass-bg);color:#fff;font-weight:bold;">X</button>
+  </div>
+  <div id="clientMap"></div>
+</div>
+
+<div class="detail-modal" id="vipConfirmModal" style="z-index:10006;">
+  <div class="modal-card">
+    <button class="close-modal" onclick="closeVipModal()">X</button>
+    <div id="vipStep1">
+      <h3 style="color:var(--accent-gold);margin-top:0;">Conditions Lago+</h3>
+      <p style="font-size:13px;color:var(--text-dim);text-align:left;">En souscrivant à l'abonnement Lago+ au prix de <b>59.99€/an</b>, vous acceptez nos CGU. Vous débloquez 15€ de cagnotte, des réductions de -15% sur tous les lits, la <b>livraison offerte</b> (- de 3km), les avatars/thèmes premium, ainsi que les <b>cartes bancaires 3D personnalisables</b> avec plusieurs designs exclusifs.</p>
+      <button onclick="vipGoStep2()" style="background:var(--accent-gold);color:#000;">Accepter et continuer</button>
+    </div>
+    <div id="vipStep2" style="display:none;">
+      <h3 style="color:var(--accent-gold);margin-top:0;">Confirmation</h3>
+      <p style="font-size:14px;">Êtes-vous sûr de faire cet achat d'un montant de <b>59.99€</b> ?</p>
+      <button onclick="confirmVipPurchase()" style="background:var(--accent-green);color:#fff;">OK, PAYER 59.99€</button>
+    </div>
+  </div>
+</div>
+
+<div class="detail-modal" id="driverBioModal" style="z-index:10008;">
+  <div class="modal-card">
+    <button class="close-modal" onclick="document.getElementById('driverBioModal').classList.remove('active')">X</button>
+    <img id="bioPhoto" src="" class="modal-avatar-large">
+    <h3 id="bioName" style="margin:0;"></h3>
+    <div style="color:var(--accent-gold);font-weight:bold;margin-bottom:15px;">★ <span id="bioRating"></span></div>
+    <div style="text-align:left;font-size:14px;color:white;background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;font-style:italic;">"<span id="bioText"></span>"</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-top:15px;">🛵 Livraisons effectuées : <span id="bioCourses" style="color:white;font-weight:bold;"></span></div>
+  </div>
+</div>
+
+<div class="detail-modal" id="referralNotVipModal" style="z-index:10010;">
+  <div class="modal-card">
+    <div style="font-size:40px;margin-bottom:10px;">🎉</div>
+    <h3 style="color:var(--accent-green);margin-top:0;">Cagnotte débloquée !</h3>
+    <p style="font-size:14px;">Bravo ! Vous avez parrainé 3 amis et gagné <b>15€</b> dans votre cagnotte.</p>
+    <p style="font-size:12px;color:var(--text-dim);">Souscrivez un abonnement Lago+ pour pouvoir toucher et utiliser votre cagnotte.</p>
+    <button onclick="openReferralAd()" style="background:var(--accent-green);color:#fff;">Continuer</button>
+  </div>
+</div>
+
+<div class="detail-modal" id="referralAdModal" style="z-index:10011;">
+  <div class="modal-card" style="background:var(--premium-gradient);color:#000;">
+    <button class="close-modal" style="background:rgba(0,0,0,0.2);border:none;" onclick="document.getElementById('referralAdModal').classList.remove('active')">X</button>
+    <h3 style="margin-top:0;font-weight:900;">Passez VIP 👑</h3>
+    <p style="font-size:14px;font-weight:bold;">Ne perdez pas vos 15€ !</p>
+    <p style="font-size:13px;text-align:left;">Devenez membre Lago+ pour 59.99€/an et profitez de :<br>✅ -15% sur tout<br>✅ Vos 15€ de parrainage<br>✅ +15€ de bienvenue offerts<br><b>Soit 30€ utilisables immédiatement !</b></p>
+    <button onclick="document.getElementById('referralAdModal').classList.remove('active');document.getElementById('buyPremiumBtn').click();" style="background:#000;color:var(--accent-gold);">M'abonner maintenant</button>
+  </div>
+</div>
+
+<div class="detail-modal" id="avatarModal" style="z-index:10009;">
+  <div class="modal-card">
+    <button class="close-modal" onclick="document.getElementById('avatarModal').classList.remove('active')">X</button>
+    <h3 style="margin-top:0;">Choisis ton Avatar</h3>
+    <h4 style="text-align:left;color:white;margin-top:15px;">Pack Standard</h4>
+    <div class="avatar-grid" id="standardAvatarsGrid"></div>
+    <h4 style="text-align:left;color:var(--accent-gold);margin-top:25px;">👑 Pack Premium (Lago+)</h4>
+    <div class="avatar-grid" id="premiumAvatarsGrid"></div>
+  </div>
+</div>
+
+<div class="detail-modal" id="customTipModal" style="z-index:10010;">
+  <div class="modal-card">
+    <button class="close-modal" onclick="closeCustomTipModal()">X</button>
+    <h3 style="margin-top:0;">💰 Pourboire</h3>
+    <p style="font-size:13px;color:var(--text-dim);">Combien voulez-vous laisser au livreur ?</p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:20px 0;">
+      <input type="number" id="customTipInput" placeholder="0" style="width:100px;padding:15px;font-size:24px;font-weight:bold;text-align:center;border-radius:15px;border:2px solid var(--accent-green);background:var(--glass-bg);color:white;outline:none;">
+      <span style="font-size:24px;font-weight:bold;">€</span>
+    </div>
+    <button onclick="validerCustomTip()" style="background:var(--accent-green);color:#fff;margin-top:0;">Valider ce montant</button>
+  </div>
+</div>
+
+<div class="app-wrapper" id="clientApp">
+  <div class="weather-banner">🌧️ Alerte Météo : Demande forte. Prix majorés de 25%.</div>
+  <div class="info-bar fake-viewers">🔥 <span id="viewerCount">84</span> personnes regardent nos lits en ce moment</div>
+  <header>
+    <h2 id="lagoTitle">Lago</h2>
+    <div id="cartIcon" onclick="switchClientTab('orders',document.querySelectorAll('.navBtn')[1])">🛒<span id="cartCount">0</span></div>
+  </header>
+  <div id="infoBubble">
+    <div id="bubbleTitle">Titre</div>
+    <div id="bubbleDesc">Description...</div>
+    <button id="closeBubble">J'ai compris</button>
+  </div>
+
+  <section id="home" class="active">
+    <div class="card">
+      <h3 style="font-size:24px;">Besoin d'un lit ?</h3>
+      <p id="welcomeTextDisplay" style="color:var(--text-dim);margin-top:-10px;">On vous livre un vrai lit, tout de suite.</p>
+      <h4>Nos Lits (Livrés en 30 min)</h4>
+      <div class="mattress" id="matelasSolo" data-name="Le Solo" data-price="20">
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>Le Solo</strong><br><small style="color:var(--text-dim)">1 place • Vrai matelas confort</small></span><span style="font-weight:800;" id="prixSoloText">20 €</span></div>
+        <div class="rupture-badge" style="display:none;color:var(--accent-red);font-size:12px;font-weight:bold;margin-top:5px;">Rupture de stock</div>
+      </div>
+      <div class="mattress" id="matelasDuo" data-name="Le Duo" data-price="35">
+        <div class="badge badge-hot">🔥 Best-Seller</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>Le Duo</strong><br><small style="color:var(--text-dim)">2 places • Vrai matelas confort</small></span><span style="font-weight:800;" id="prixDuoText">35 €</span></div>
+        <div class="rupture-badge" style="display:none;color:var(--accent-red);font-size:12px;font-weight:bold;margin-top:5px;">Rupture de stock</div>
+      </div>
+      <div class="mattress" id="matelasGonflable" data-name="Matelas Gonflable" data-price="10">
+        <div class="badge badge-warn">Idéal Dépannage</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>Le Gonflable</strong><br><small style="color:var(--text-dim)">2 places • Basique</small></span><span style="font-weight:800;" id="prixGonflableText">10 €</span></div>
+        <div class="rupture-badge" style="display:none;color:var(--accent-red);font-size:12px;font-weight:bold;margin-top:5px;">Rupture de stock</div>
+      </div>
+      <div class="mattress" id="matelasBebe" data-name="Lit Parapluie" data-price="25">
+        <div class="badge badge-blue">🍼 Famille</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>Lit Parapluie</strong><br><small style="color:var(--text-dim)">Pour bébé • Avec petit matelas</small></span><span style="font-weight:800;" id="prixBebeText">25 €</span></div>
+        <div class="rupture-badge" style="display:none;color:var(--accent-red);font-size:12px;font-weight:bold;margin-top:5px;">Rupture de stock</div>
+      </div>
+      <br>
+      <h4>Options (Appui long pour + d'infos)</h4>
+      <div class="options"></div>
+      <br>
+      <button id="addToCart">Ajouter au panier</button>
+    </div>
+  </section>
+
+  <section id="orders">
+    <div class="card">
+      <h3>Votre Panier</h3>
+      <div id="cartList"><p style="color:var(--text-dim)">Votre panier est vide.</p></div>
+      <div class="promo-box">
+        <input type="text" id="promoInput" placeholder="Code Promo">
+        <button id="applyPromo">OK</button>
+      </div>
+      <p id="promoMessage" style="color:var(--accent-green);font-size:12px;display:none;margin-top:5px;">Code appliqué !</p>
+      <hr style="border:0;border-top:1px solid var(--glass-border);margin:20px 0;">
+      <div id="factureDetails" style="display:none;">
+        <div class="cartItem" style="border:none;padding:5px 0;"><span>Sous-total Lits & Options</span><span id="sousTotalDisplay">0.00 €</span></div>
+        <div class="cartItem" style="border:none;padding:5px 0;color:var(--text-dim);"><span>Frais de livraison (<span id="cartDistanceDisplay">--</span> km)</span><span id="fraisLivraisonDisplay">4.99 €</span></div>
+        <div class="cartItem" style="border:none;padding:5px 0;color:var(--text-dim);"><span>Frais de service & TVA</span><span>2.99 €</span></div>
+        <div class="cartItem discount" id="premiumDiscountRow" style="border:none;padding:5px 0;display:none;"><span>👑 Avantage Lago+ (-15%)</span><span id="premiumDiscountDisplay">-0.00 €</span></div>
+        <div id="dynamicTaxesAndDiscounts"></div>
+        <div id="useCagnotteDiv" style="display:none;margin-top:15px;padding:10px;background:var(--glass-bg);border-radius:10px;">
+          <label style="display:flex;align-items:center;gap:10px;font-weight:bold;cursor:pointer;">
+            <input type="checkbox" id="useCagnotteCheck" style="transform:scale(1.2);"> Utiliser ma cagnotte (<span id="cagnotteDispoCart">0.00</span> €)
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;border-top:1px solid var(--glass-border);padding-top:15px;">
+        <span style="font-size:18px;color:var(--text-dim);">Total à payer</span>
+        <span style="font-size:24px;font-weight:800;"><span id="totalPrice">0.00</span> €</span>
+      </div>
+      <div id="scheduleSection" style="margin-top:20px;background:rgba(56,189,248,0.1);padding:15px;border-radius:15px;border:1px solid var(--accent-blue);display:none;">
+        <label style="font-weight:bold;color:var(--accent-blue);font-size:13px;display:block;margin-bottom:10px;">🕒 QUAND VOULEZ-VOUS ÊTRE LIVRÉ ?</label>
+        <select id="deliveryModeSelect" style="width:100%;padding:12px;border-radius:8px;border:none;background:#fff;color:#000;font-weight:bold;outline:none;" onchange="toggleScheduleInput()">
+          <option value="now">Tout de suite (35 min max)</option>
+          <option value="later">Programmer une heure...</option>
+        </select>
+        <input type="time" id="scheduledTimeInput" style="display:none;width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none;background:#fff;color:#000;font-weight:bold;outline:none;box-sizing:border-box;">
+      </div>
+      <div id="tipSection" style="margin-top:20px;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);display:none;">
+        <div style="font-size:13px;font-weight:bold;margin-bottom:10px;color:var(--text-main);">💰 Laisser un pourboire au livreur ?</div>
+        <div class="options tip-options" style="justify-content:center;">
+          <div class="option tip-btn" data-val="1">1€</div>
+          <div class="option tip-btn" data-val="2">2€</div>
+          <div class="option tip-btn" data-val="5">5€</div>
+          <div class="option tip-btn" data-val="custom">Custom</div>
+        </div>
+      </div>
+      <button id="payBtn" style="background:var(--accent-blue);color:#000;">💳 CHOISIR MON PAIEMENT</button>
+    </div>
+  </section>
+
+  <section id="tracking">
+    <div class="card" style="border-color:var(--accent-green);">
+      <h2 style="font-size:40px;margin-bottom:10px;">📍</h2>
+      <h3 id="trackTitle">Commande validée !</h3>
+      <p id="trackDesc" style="color:var(--text-dim);">Ton lit se prépare...</p>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button id="showGpsBtn" style="display:none;background:var(--bg-main);border:1px solid var(--accent-blue);color:var(--accent-blue);font-weight:bold;" onclick="openClientGPS()">🗺️ GPS LIVE</button>
+        <button id="showChatBtn" style="display:none;background:var(--bg-main);border:1px solid var(--accent-gold);color:var(--accent-gold);font-weight:bold;" onclick="toggleChat()">💬 MESSAGE</button>
+      </div>
+      <div id="driverProfile" style="display:none;margin:20px 0;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);text-align:left;display:flex;align-items:center;gap:15px;">
+        <img id="clientLivreurPhoto" src="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;display:none;border:2px solid var(--glass-border);cursor:pointer;" onclick="showBioModal()">
+        <div style="flex:1;">
+          <div style="font-weight:bold;font-size:18px;"><span id="livreurName">Karim</span> <span id="livreurNote" style="font-size:14px;color:var(--accent-gold);">★ 4.9</span></div>
+          <div style="font-size:12px;color:var(--text-dim);">En route (Clique sur la photo)</div>
+        </div>
+      </div>
+      <div id="chatZone">
+        <div id="chatHistory"></div>
+        <div style="display:flex;gap:5px;">
+          <input type="text" id="chatInput" placeholder="Écrire au livreur..." style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--glass-border);background:var(--bg-main);color:white;font-size:12px;outline:none;">
+          <button onclick="sendChatMessage()" style="width:auto;margin:0;padding:10px 15px;border-radius:10px;font-size:12px;background:var(--accent-blue);color:#000;">Envoyer</button>
+        </div>
+      </div>
+      <div style="position:relative;margin-top:30px;">
+        <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="truck" id="truckIcon">🚚</div>
+      </div>
+      <div id="cashbackPopup" style="display:none;background:rgba(34,197,94,0.2);border:1px solid var(--accent-green);padding:10px;border-radius:10px;margin-top:20px;color:var(--accent-green);font-weight:bold;">
+        💰 +<span id="cashbackWon">0</span>€ ajoutés à ta cagnotte Premium !
+      </div>
+      <div id="ratingDiv" style="display:none;margin-top:25px;border-top:1px dashed var(--glass-border);padding-top:15px;">
+        <p style="font-size:14px;font-weight:bold;margin-bottom:10px;">Notez la livraison de <span id="rateLivreurName">Karim</span> :</p>
+        <div style="font-size:30px;display:flex;justify-content:center;gap:5px;margin-bottom:15px;" id="starContainer">
+          <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
+        </div>
+        <textarea id="commentInput" placeholder="Un petit mot pour le livreur ?" style="width:100%;height:60px;background:var(--glass-bg);border:1px solid var(--glass-border);color:white;border-radius:10px;padding:10px;box-sizing:border-box;margin-bottom:10px;font-family:inherit;"></textarea>
+        <button id="submitReviewBtn" style="background:var(--accent-green);color:white;margin-top:0;">Envoyer mon avis</button>
+        <p id="merciAvis" style="display:none;color:var(--accent-green);font-size:14px;font-weight:bold;margin-top:10px;">✓ Merci pour ton avis et commentaire !</p>
+      </div>
+      <button id="backHomeBtn" style="display:none;background:var(--accent-blue);color:#000;margin-top:20px;">Retour à l'accueil</button>
+      <button id="trackingSummaryBtn" class="tracking-summary-btn" onclick="openOrderSummaryModal()" style="display:none;">Résumé de la commande</button>
+    </div>
+  </section>
+
+  <section id="profile">
+    <div class="card" style="text-align:center;">
+      <div style="position:relative;width:90px;height:90px;margin:0 auto 15px;">
+        <img id="userAvatarImg" src="https://api.dicebear.com/7.x/notionists/svg?seed=Mimi" style="width:100%;height:100%;border-radius:50%;object-fit:cover;background:var(--glass-bg);border:3px solid var(--glass-border);">
+        <div onclick="document.getElementById('avatarModal').classList.add('active')" style="position:absolute;bottom:0;right:0;background:var(--text-main);color:var(--bg-main);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;font-weight:bold;">✎</div>
+      </div>
+      <h3>Mon Compte</h3>
+      <p style="color:var(--accent-green);font-weight:600;font-size:14px;">✓ Utilisateur Vérifié</p>
+      <div style="text-align:left;color:var(--text-dim);margin-top:15px;">
+        <p>Email : <span id="clientEmailDisplay">client@gmail.com</span></p>
+        <p style="font-weight:bold;color:var(--text-main);margin-bottom:5px;">Historique des commandes :</p>
+        <div id="historiqueDetails" style="max-height:200px;overflow-y:auto;font-size:12px;"><p style="color:var(--text-dim)">Aucune commande pour le moment.</p></div>
+        <div id="clientStatsBox" class="client-stats-box"></div>
+      </div>
+      <div class="premium-card" id="premiumBlockFalse">
+        <div class="premium-title">👑 Lago+</div>
+        <div style="font-size:12px;font-weight:bold;opacity:0.8;">Passez au niveau supérieur.</div>
+        <div class="premium-perks">✅ -15% sur TOUTES vos commandes<br>✅ Livraison OFFERTE (distance < 3km)<br>✅ Cagnotte Cashback aléatoire à chaque achat<br>✅ Avatars, thèmes & cartes 3D Premium</div>
+        <button class="premium-btn" id="buyPremiumBtn">Débloquer (59.99€ / an)</button>
+      </div>
+      <div class="premium-card holographic-vip" id="premiumBlockTrue" style="display:none;">
+        <div class="is-premium-badge" style="position:relative;z-index:2;border:1px solid var(--accent-gold);">👑 Membre VIP Lago+</div>
+        <div style="font-size:14px;margin-top:10px;color:var(--text-dim);position:relative;z-index:2;">Cagnotte disponible :</div>
+        <div class="cagnotte-click-zone" onclick="openLagoPlusModal()" title="Voir les avantages Lago+"><span id="cagnotteDisplay">0.00</span> €</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:15px;position:relative;z-index:2;">Les -15% sont appliqués automatiquement.</div>
+        <button onclick="refundVip()" style="background:rgba(0,0,0,0.5);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:12px;padding:10px;position:relative;z-index:2;">Résilier & Se faire rembourser</button>
+      </div>
+      <div style="margin-top:25px;text-align:left;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);" id="referralBlock">
+        <h4 style="margin-top:0;color:var(--text-main);">🎁 Parrainer un ami</h4>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:-5px;">Gagnez 5€ par ami parrainé (Max 3). Débloquez vos 15€ au 3ème ami !</p>
+        <div style="display:flex;gap:10px;margin-bottom:10px;" id="referralInputZone">
+          <input type="email" id="referralEmail" placeholder="Email de l'ami" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--glass-border);background:var(--bg-main);color:white;font-size:12px;outline:none;">
+          <button onclick="addReferral()" style="width:auto;margin:0;padding:10px 15px;border-radius:10px;font-size:12px;background:var(--accent-blue);color:#000;">Valider</button>
+        </div>
+        <div id="referralList" style="display:flex;flex-direction:column;gap:5px;"></div>
+      </div>
+      <div style="margin-top:25px;text-align:left;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);">
+        <h4 style="margin-top:0;color:var(--text-main);">💳 Mode de paiement</h4>
+        <div id="savedCardsList"><p style="color:var(--text-dim);font-size:12px;">Aucune carte enregistrée.</p></div>
+      </div>
+      <div style="margin-top:25px;text-align:left;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);">
+        <h4 style="margin-top:0;color:var(--text-main);">⚙️ Personnalisation</h4>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:bold;font-size:14px;">Thème visuel</span>
+          <select id="userThemeSelect" style="padding:8px;border-radius:8px;border:none;background:#fff;color:#000;font-weight:bold;outline:none;max-width:150px;">
+            <option value="dark">🌙 Nuit</option>
+            <option value="light">☀️ Jour</option>
+            <option value="neon" id="optNeon" disabled>👑 Néon Bleu</option>
+            <option value="black" id="optBlack" disabled>👑 Pitch Black</option>
+            <option value="glass" id="optGlass" disabled>👑 Liquide Glace</option>
+          </select>
+        </div>
+      </div>
+      <!-- BOUTON DÉCONNEXION — inline onclick pour fiabilité maximale -->
+      <button id="logoutBtn" onclick="logOut()" style="background:transparent;border:1px solid var(--glass-border);color:var(--text-dim);margin-top:20px;">Déconnexion</button>
+    </div>
+  </section>
+
+  <nav id="clientNav">
+    <div class="nav-glass-indicator" id="clientNavIndicator"></div>
+    <div class="navBtn active" onclick="switchClientTab('home',this)">Accueil</div>
+    <div class="navBtn" onclick="switchClientTab('orders',this)">Panier</div>
+    <div class="navBtn" onclick="switchClientTab('profile',this)">Profil</div>
+  </nav>
+</div>
+
+<div id="adminToastContainer"></div>
+
+<div class="detail-modal" id="adminModal">
+  <div class="modal-card">
+    <button class="close-modal" onclick="closeAdminModal()">X</button>
+    <div id="adminModalContent"></div>
+  </div>
+</div>
+
+<div class="app-wrapper" id="adminApp">
+  <header style="background:var(--bg-main);border-bottom:1px solid var(--glass-border);">
+    <h2 style="color:var(--accent-red);">Lago <span style="font-size:14px;font-weight:normal;color:var(--text-main);">Patron</span></h2>
+    <!-- BOUTON DÉCONNEXION ADMIN — inline onclick -->
+    <button id="adminDebugDoor" class="admin-debug-door" onclick="openDebugPanel(event)" title="Debug discret">🚪</button>
+  </header>
+
+  <section id="admSettings" class="active">
+    <div class="card" style="border-color:var(--accent-red);">
+      <h3 style="color:var(--accent-red);margin-bottom:5px;">⚙️ Réglages Vitrine</h3>
+      <label class="admin-label">Texte d'accueil</label>
+      <input type="text" id="adminWelcomeText" class="admin-input" style="margin-bottom:15px;">
+      <div class="admin-grid">
+        <div style="background:rgba(0,0,0,0.05);padding:8px;border-radius:8px;"><label class="admin-label">Prix SOLO (€)</label><input type="number" id="adminPrixSolo" class="admin-input"><label style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;"><input type="checkbox" id="adminRuptureSolo"> Rupture</label></div>
+        <div style="background:rgba(0,0,0,0.05);padding:8px;border-radius:8px;"><label class="admin-label">Prix DUO (€)</label><input type="number" id="adminPrixDuo" class="admin-input"><label style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;"><input type="checkbox" id="adminRuptureDuo"> Rupture</label></div>
+        <div style="background:rgba(0,0,0,0.05);padding:8px;border-radius:8px;"><label class="admin-label">Prix GONFLABLE (€)</label><input type="number" id="adminPrixGonflable" class="admin-input"><label style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;"><input type="checkbox" id="adminRuptureGonflable"> Rupture</label></div>
+        <div style="background:rgba(0,0,0,0.05);padding:8px;border-radius:8px;"><label class="admin-label">Prix BÉBÉ (€)</label><input type="number" id="adminPrixBebe" class="admin-input"><label style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;"><input type="checkbox" id="adminRuptureBebe"> Rupture</label></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;font-weight:bold;color:var(--accent-red);margin:15px 0;"><input type="checkbox" id="adminTaxeNuit" style="transform:scale(1.5);"> Activer Surtaxe (+20% sur les lits)</label>
+      <label style="display:flex;align-items:center;gap:10px;font-weight:bold;color:var(--accent-blue);margin-bottom:15px;"><input type="checkbox" id="adminWeatherToggle" style="transform:scale(1.5);" onchange="toggleWeather()"> ☁️ Activer Surtaxe Météo (+25%)</label>
+      <hr style="border:0;border-top:1px solid var(--glass-border);margin:15px 0;">
+      <h4 style="color:var(--accent-gold);margin-top:0;">🎟️ Créateur de Promo</h4>
+      <div class="promo-admin-card">
+        <div>
+          <div class="admin-label">Code actif</div>
+          <div id="adminPromoPreview" class="promo-admin-preview">FREROT • -5€ • Tous les matelas</div>
+        </div>
+        <button type="button" onclick="openPromoBuilder()" class="promo-builder-btn">⚙️ Code promo</button>
+      </div>
+      <input type="hidden" id="adminPromoCodeStr" value="FREROT">
+      <input type="hidden" id="adminPromoValue" value="5">
+      <h4 style="color:var(--accent-blue);margin-top:0;">Gestion des Options</h4>
+      <div id="adminOptionsList"></div>
+      <button id="saveAdminBtn" style="background:var(--accent-green);color:#fff;margin-top:20px;">💾 Sauvegarder (Synchro Directe)</button>
+    </div>
+  </section>
+
+  <section id="admDrivers">
+    <div class="card">
+      <h3>📍 Carte Live & DRH</h3>
+      <div class="admin-tab-nav">
+        <button class="admin-tab-btn active" onclick="switchDriverTab('actifs',this)">🛵 Actifs (<span id="countActifs">0</span>)</button>
+        <button class="admin-tab-btn" onclick="switchDriverTab('recrutement',this)">📋 Recrutement (<span id="countRecruts">0</span>)</button>
+      </div>
+      <div id="adminMap"></div>
+      <div id="tabActifs" style="display:block;">
+        <input type="text" id="adminDriverSearch" class="admin-input" placeholder="🔍 Rechercher un livreur..." oninput="renderAdminDrivers()" style="margin-bottom:15px;">
+        <div id="adminDriverList" style="max-height:40vh;overflow-y:auto;padding-right:5px;"></div>
+      </div>
+      <div id="tabRecrutement" style="display:none;">
+        <button id="adminRecruitToggleBtn" onclick="toggleDriverRecruitments()" style="background:var(--accent-red);color:white;margin:0 0 12px 0;">Arrêter les recrutements</button>
+        <p id="adminRecruitHint" style="font-size:12px;color:var(--text-dim);margin-top:0;">Candidatures reçues + profils disponibles.</p>
+        <div id="adminRecruitList" style="max-height:52vh;overflow-y:auto;padding-right:5px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="admStats">
+    <div class="card">
+      <h3>📊 Tableau de Bord</h3>
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:15px;padding:20px;text-align:center;margin-top:15px;">
+        <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">CA Net Entreprise</div>
+        <div style="font-size:36px;font-weight:900;color:var(--accent-green);" id="statsCATotal">0.00 €</div>
+        <div id="statsTrendIndicator" class="stats-trend neutral">↗ +0.00 € aujourd’hui</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+        <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:15px;padding:15px;text-align:center;"><div style="font-size:24px;font-weight:bold;" id="statsTotalOrders">0</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;">Commandes Totales</div></div>
+        <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:15px;padding:15px;text-align:center;"><div style="font-size:24px;font-weight:bold;" id="countUsersAdmin">150</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;">Inscrits Lago</div></div>
+      </div>
+      <h4 style="margin-top:25px;">Base de données Clients</h4>
+      <input type="text" id="adminUserSearch" class="admin-input" placeholder="🔍 Rechercher un client par email..." oninput="renderAdminUsers()" style="margin-bottom:15px;">
+      <div id="adminUserList" style="background:rgba(0,0,0,0.2);border-radius:10px;padding:10px;max-height:250px;overflow-y:auto;"></div>
+      <div style="margin-top:25px;text-align:left;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);">
+        <h4 style="margin-top:0;color:var(--text-main);">🎨 Thème</h4>
+        <select id="adminThemeSelect" style="width:100%;padding:8px;border-radius:8px;border:none;background:#fff;color:#000;font-weight:bold;outline:none;">
+          <option value="dark">🌙 Nuit</option><option value="light">☀️ Jour</option><option value="neon">👑 Néon Bleu</option><option value="black">👑 Pitch Black</option><option value="glass">👑 Liquide Glace</option>
+        </select>
+      </div>
+      <button id="adminLogoutBtn" class="admin-logout-standalone" onclick="forceAdminLogout(event)" onpointerdown="forceAdminLogout(event)">Déconnexion</button>
+    </div>
+  </section>
+
+  <nav id="adminNav">
+    <div class="navBtn active" onclick="switchAdminTab('admSettings',this)">Réglages</div>
+    <div class="navBtn" onclick="switchAdminTab('admDrivers',this)">Livreurs</div>
+    <div class="navBtn" onclick="switchAdminTab('admStats',this)">Stats</div>
+  </nav>
+</div>
+
+<div id="driverApp" style="display:none;">
+  <header>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <img id="driverAppAvatar" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23007aff%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b1220%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22120%22%20height%3D%22120%22%20rx%3D%2260%22%20fill%3D%22url%28%23g%29%22/%3E%3Ctext%20x%3D%2260%22%20y%3D%2274%22%20text-anchor%3D%22middle%22%20font-size%3D%2252%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-weight%3D%22900%22%20fill%3D%22white%22%3EL%3C/text%3E%3C/svg%3E" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--glass-border);">
+      <div>
+        <div style="font-size:11px;color:var(--text-dim);font-weight:bold;text-transform:uppercase;">Lago Livreur</div>
+        <h2 id="driverAppName" style="margin:0;font-size:20px;">Livreur</h2>
+      </div>
+    </div>
+    <button onclick="logOut(true)" style="width:auto;margin:0;padding:8px 12px;border-radius:12px;background:var(--accent-red);color:white;font-size:12px;">Déconnexion</button>
+  </header>
+  <main>
+    <section id="drvOrders" class="active">
+      <div class="card"><h3>Commandes</h3><p style="color:var(--text-dim);font-size:13px;">Aucune course disponible pour le moment. Cette partie sera développée ensuite.</p></div>
+    </section>
+    <section id="drvMoney">
+      <div class="card"><h3>Mes gains</h3><p style="color:var(--text-dim);font-size:13px;">Tes gains, pourboires et statistiques apparaîtront ici.</p></div>
+    </section>
+    <section id="drvProfile">
+      <div class="card" style="text-align:center;">
+        <img id="driverProfileAvatar" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23007aff%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b1220%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22120%22%20height%3D%22120%22%20rx%3D%2260%22%20fill%3D%22url%28%23g%29%22/%3E%3Ctext%20x%3D%2260%22%20y%3D%2274%22%20text-anchor%3D%22middle%22%20font-size%3D%2252%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-weight%3D%22900%22%20fill%3D%22white%22%3EL%3C/text%3E%3C/svg%3E" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--glass-border);">
+        <h3 id="driverProfileName">Livreur Lago</h3>
+        <p id="driverProfileEmail" style="color:var(--text-dim);font-size:13px;word-break:break-all;"></p>
+        <div class="driver-profile-box" id="driverProfileInfo"></div>
+      </div>
+    </section>
+  </main>
+  <nav id="driverNav">
+    <div class="navBtn active" onclick="switchDriverAppTab('drvOrders',this)">Commandes</div>
+    <div class="navBtn" onclick="switchDriverAppTab('drvMoney',this)">Gains</div>
+    <div class="navBtn" onclick="switchDriverAppTab('drvProfile',this)">Profil</div>
+  </nav>
+</div>
+
+<div class="detail-modal" id="driverRecruitModal" style="z-index:10060;">
+  <div class="modal-card driver-recruit-card">
+    <button class="close-modal" onclick="closeDriverRecruitment()">X</button>
+    <h3 style="margin-top:0;color:var(--accent-blue);">Candidature livreur</h3>
+    <p class="driver-recruit-subtitle">Deux étapes simples pour envoyer ton formulaire de recrutement.</p>
+    <div class="driver-recruit-photo" onclick="toggleDriverPhotoChoices()">
+      <img id="driverCandidatePhoto" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23007aff%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b1220%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22120%22%20height%3D%22120%22%20rx%3D%2260%22%20fill%3D%22url%28%23g%29%22/%3E%3Ctext%20x%3D%2260%22%20y%3D%2274%22%20text-anchor%3D%22middle%22%20font-size%3D%2252%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-weight%3D%22900%22%20fill%3D%22white%22%3EL%3C/text%3E%3C/svg%3E">
+      <span id="driverCandidatePlus">+</span>
+    </div>
+    <div id="driverPhotoChoices" class="driver-photo-choices"></div>
+    <div class="driver-recruit-progress"><i id="driverRecruitProgress"></i></div>
+    <div id="driverRecruitStep1" class="driver-recruit-step active">
+      <h4>Identité</h4>
+      <input id="driverFirstName" class="auth-input" placeholder="Prénom">
+      <input id="driverLastName" class="auth-input" placeholder="Nom ou initiale">
+      <div class="driver-form-grid-2"><input id="driverAge" class="auth-input" type="number" min="16" placeholder="Âge"><input id="driverCity" class="auth-input" placeholder="Ville"></div>
+      <input id="driverPhone" class="auth-input" placeholder="Téléphone ou pseudo contact">
+      <select id="driverExperience" class="auth-input"><option value="">Expérience livraison</option><option>Débutant motivé</option><option>Déjà livreur</option><option>Habitué des trajets en ville</option><option>Ancien coursier</option></select>
+      <button onclick="nextDriverRecruitStep()">Continuer</button>
+    </div>
+    <div id="driverRecruitStep2" class="driver-recruit-step">
+      <h4>Disponibilité & matériel</h4>
+      <select id="driverVehicle" class="auth-input"><option value="">As-tu un véhicule ?</option><option>Voiture</option><option>Scooter</option><option>Vélo</option><option>À pied</option></select>
+      <select id="driverAvailability" class="auth-input"><option value="">Disponibilités</option><option>Soir</option><option>Week-end</option><option>Tous les jours</option><option>Vacances seulement</option><option>Après les cours</option></select>
+      <select id="driverArea" class="auth-input"><option value="">Zone préférée</option><option>Centre-ville</option><option>Autour de Tours</option><option>Petits trajets</option><option>Longs trajets</option><option>Peu importe</option></select>
+      <select id="driverHeavy" class="auth-input"><option value="">Porter un matelas ?</option><option>Oui, sans problème</option><option>Oui, avec aide si besoin</option><option>Plutôt les petits lits</option></select>
+      <textarea id="driverMotivation" class="auth-input" placeholder="Motivation : pourquoi tu veux devenir livreur Lago ?" style="height:86px;resize:none;"></textarea>
+      <textarea id="driverNotes" class="auth-input" placeholder="Infos en plus : horaires, véhicule, ville, contraintes..." style="height:70px;resize:none;"></textarea>
+      <div style="display:flex;gap:10px;"><button onclick="prevDriverRecruitStep()" style="background:var(--glass-bg);color:white;">Retour</button><button onclick="submitDriverRecruitment()">Envoyer le formulaire</button></div>
+    </div>
+    <div id="driverRecruitDone" class="driver-recruit-step driver-recruit-done">
+      <div class="done-check">✓</div>
+      <h3>Demande envoyée</h3>
+      <p>Nous vous répondrons dans les plus brefs délais.</p>
+      <button onclick="closeDriverRecruitment(true)">Retour connexion</button>
+    </div>
+  </div>
+</div>
+
+<div class="detail-modal" id="debugModal" style="z-index:10050;">
+  <div class="modal-card debug-card">
+    <button class="close-modal" onclick="closeDebugPanel()">X</button>
+    <h3 style="margin-top:0;color:var(--accent-blue);">🐞 Centre debug discret</h3>
+    <p style="color:var(--text-dim);font-size:12px;margin-top:-6px;">Centre de contrôle interne de l’application.</p>
+    <div id="debugStatus" class="debug-status"></div>
+    <h4 style="margin:12px 0 6px;color:var(--accent-gold);">Journal patron</h4>
+    <div id="debugActionLog" class="debug-action-log"></div>
+    <button onclick="debugResetSession()" class="debug-btn">♻️ Remettre cette session à zéro</button>
+    <button onclick="debugClearCart()" class="debug-btn">🧺 Vider le panier</button>
+    <button onclick="debugToggleVip()" class="debug-btn">👑 Activer / désactiver Lago+</button>
+    <button onclick="debugAddTestCard()" class="debug-btn">💳 Ajouter une carte</button>
+    <button onclick="debugAddTestOrder()" class="debug-btn">🧾 Ajouter une commande</button>
+    <button onclick="debugRefreshStatus()" class="debug-btn ghost">🔍 Rafraîchir les infos</button>
+  </div>
+</div>
+
+<div id="deliveryMiniBubble" onclick="expandDeliveryTracking()">
+  <img id="miniDriverPhoto" src="" alt="Livreur">
+  <div class="mini-delivery-info">
+    <strong id="miniDriverName">Livreur</strong>
+    <span id="miniEtaText">Recherche…</span>
+    <div class="mini-dots"><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<div class="detail-modal" id="lagoPlusModal" style="z-index:10020;">
+  <div class="modal-card lago-plus-modal-card">
+    <button class="close-modal" onclick="closeLagoPlusModal()">X</button>
+    <h3 style="color:var(--accent-gold);margin-top:0;">👑 Mon espace Lago+</h3>
+    <div class="lago-plus-balance"><span id="lagoPlusBalance">0.00</span> €</div>
+    <div id="lagoPlusStats" class="lago-plus-stats"></div>
+    <div class="lago-plus-grid">
+      <div>✅ -15% sur les lits</div>
+      <div>✅ Livraison offerte sous 3 km</div>
+      <div>✅ Thèmes premium</div>
+      <div>✅ Cartes bancaires 3D</div>
+      <div>✅ Cashback cagnotte</div>
+      <div>✅ Avatars VIP</div>
+    </div>
+    <p style="font-size:12px;color:var(--text-dim);line-height:1.5;">Ta cagnotte peut être utilisée dans le panier. Les avantages Lago+ restent appliqués automatiquement pendant tes commandes.</p>
+  </div>
+</div>
+
+<div class="detail-modal" id="orderSummaryModal" style="z-index:10021;">
+  <div class="modal-card">
+    <button class="close-modal" onclick="closeOrderSummaryModal()">X</button>
+    <h3 style="margin-top:0;color:var(--accent-blue);">Résumé de commande</h3>
+    <div id="orderSummaryContent" class="order-summary-content"></div>
+  </div>
+</div>
+
+<div class="detail-modal" id="promoBuilderModal" style="z-index:10022;">
+  <div class="modal-card promo-builder-card">
+    <button class="close-modal" onclick="closePromoBuilder()">X</button>
+    <h3 style="color:var(--accent-gold);margin-top:0;">🎟️ Code promo</h3>
+    <p class="promo-builder-help">La réduction s’applique uniquement au prix des lits ciblés, jamais aux options ni aux frais.</p>
+    <label class="admin-label">Code</label>
+    <input id="promoBuilderCode" class="admin-input" placeholder="DODO20">
+    <label class="admin-label">Réduction</label>
+    <select id="promoBuilderValue" class="admin-input promo-wheel-select" onchange="togglePromoCustom()">
+      <option value="10">10%</option><option value="15">15%</option><option value="20">20%</option><option value="30">30%</option><option value="40">40%</option><option value="50">50%</option><option value="70">70%</option><option value="100">100%</option><option value="custom">Custom</option>
+    </select>
+    <input id="promoBuilderCustom" class="admin-input" type="number" min="1" max="100" placeholder="Pourcentage custom" style="display:none;">
+    <label class="admin-label">Matelas ciblé</label>
+    <select id="promoBuilderTarget" class="admin-input promo-wheel-select">
+      <option value="all">Tous les matelas</option>
+      <option value="Le Solo">Le Solo</option>
+      <option value="Le Duo">Le Duo</option>
+      <option value="Matelas Gonflable">Matelas Gonflable</option>
+      <option value="Lit Parapluie">Lit Parapluie</option>
+    </select>
+    <label class="admin-label">Nombre d'utilisations</label>
+    <select id="promoBuilderUsage" class="admin-input promo-wheel-select" onchange="togglePromoUsageCustom()">
+      <option value="1">1 utilisation</option>
+      <option value="2">2 utilisations</option>
+      <option value="3">3 utilisations</option>
+      <option value="5">5 utilisations</option>
+      <option value="10">10 utilisations</option>
+      <option value="custom">Custom</option>
+      <option value="999">Illimité</option>
+    </select>
+    <input id="promoBuilderUsageCustom" class="admin-input" type="number" min="1" max="999" placeholder="Nombre d'utilisations custom" style="display:none;">
+    <label class="admin-label">Statut</label>
+    <select id="promoBuilderActive" class="admin-input promo-wheel-select"><option value="true">Activé</option><option value="false">Désactivé</option></select>
+    <button onclick="savePromoBuilder()" style="background:var(--accent-gold);color:#000;margin-top:15px;">Sauvegarder la promo</button>
+  </div>
+</div>
+
+<!-- PAIEMENT SHEET -->
+<div id="paymentOverlay">
+  <div id="paymentSheet">
+    <div class="pay-header">
+      <div class="pay-handle"></div>
+      <p class="pay-title">Finaliser la commande</p>
+      <p class="pay-amount" id="payAmountDisplay">0.00 €</p>
+      <button class="pay-close-btn" onclick="closePayment()">✕</button>
+    </div>
+    <div class="pay-tabs">
+      <div class="pay-tab active" onclick="switchPayTab('card',this)"><span class="pay-tab-icon">💳</span>Carte</div>
+      <div class="pay-tab" onclick="switchPayTab('paypal',this)"><span class="pay-tab-icon">🅿️</span>PayPal</div>
+    </div>
+    <div class="pay-content">
+      <!-- PANEL CARTE -->
+      <div class="pay-panel active" id="panel-card">
+        <!-- Zone cartes sauvegardées -->
+        <div id="savedCardsPayZone" style="display:none;margin-bottom:5px;">
+          <div style="color:#8e8e93;font-size:11px;font-weight:600;text-transform:uppercase;margin-bottom:10px;">Mes cartes enregistrées</div>
+          <div id="savedCardsPayList"></div>
+          <div class="new-card-toggle" id="toggleNewCardBtn" onclick="toggleNewCardForm()">➕ Utiliser une nouvelle carte</div>
+        </div>
+        <!-- Formulaire nouvelle carte -->
+        <div id="newCardForm">
+          <div class="card-display card-scene card-design-classic" id="cardDisplayScene" onclick="togglePaymentCardFlip()">
+            <div class="card-display-controls">
+              <button class="question-bubble" onclick="event.stopPropagation();openTos()">?</button>
+              <button class="design-bubble" id="cardDesignBtn" style="display:none;" onclick="openCardDesignPicker(event)">💳+</button>
+            </div>
+            <div class="payment-card-3d" id="paymentCard3D">
+              <div class="payment-card-face payment-card-front">
+                <div class="card-design-sheen"></div>
+                <div class="card-chip"></div>
+                <div class="card-brand-display" id="cardBrandDisplay">CB</div>
+                <div class="card-number-display" id="cardNumberDisplay">•••• •••• •••• ••••</div>
+                <div class="card-bottom">
+                  <div class="card-holder-label">Titulaire<br><span id="cardHolderDisplay" style="color:#fff;font-size:13px;font-weight:bold;">VOTRE NOM</span></div>
+                  <div class="card-expiry-label">Expire<br><span id="cardExpiryDisplay" style="color:#fff;font-size:13px;font-weight:bold;">MM/AA</span></div>
+                </div>
+              </div>
+              <div class="payment-card-face payment-card-back">
+                <div class="card-back-strip"></div>
+                <div class="card-back-signature">
+                  <span>Signature</span>
+                  <div class="card-cvv-box" id="cardCvvDisplay">•••</div>
+                </div>
+                <div class="card-back-footer">
+                  <div class="card-back-last4">•••• <span id="cardLast4Display">0000</span></div>
+                  <div class="card-back-type" id="cardBackTypeDisplay">CB</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-form-group">
+            <label class="card-label">Numéro de carte</label>
+            <input class="card-input" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" autocomplete="cc-number">
+          </div>
+          <div class="card-form-group">
+            <label class="card-label">Titulaire</label>
+            <input class="card-input" id="cardHolder" placeholder="JEAN DUPONT" autocomplete="cc-name">
+          </div>
+          <div class="card-row">
+            <div class="card-form-group">
+              <label class="card-label">Expiration</label>
+              <input class="card-input" id="cardExpiry" placeholder="MM/AA" maxlength="5" inputmode="numeric" autocomplete="cc-exp">
+            </div>
+            <div class="card-form-group">
+              <label class="card-label">CVV</label>
+              <input class="card-input" id="cardCVV" placeholder="CVV" maxlength="3" inputmode="numeric" type="password" autocomplete="cc-csc">
+            </div>
+          </div>
+          <!-- Case à cocher : enregistrement se fait SEULEMENT au moment du clic sur Payer -->
+          <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:#ccc;margin-bottom:15px;cursor:pointer;">
+            <input type="checkbox" id="saveCardCheck" style="transform:scale(1.2);">
+            <span>Enregistrer cette carte pour la prochaine fois</span>
+          </label>
+        </div>
+        <button class="pay-submit-btn pay-submit-card" id="cardPayBtn" onclick="processCardPayment()">🔒 Payer <span id="cardPayAmount">0.00</span> €</button>
+      </div>
+      <!-- PANEL PAYPAL -->
+      <div class="pay-panel" id="panel-paypal">
+        <div style="text-align:center;margin-bottom:20px;"><div class="paypal-logo-box">Pay<span>Pal</span></div></div>
+        <div class="card-form-group"><input class="paypal-input" id="paypalEmail" type="email" placeholder="votre@email.com"></div>
+        <div class="card-form-group"><input class="paypal-input" id="paypalPassword" type="password" placeholder="••••••••••••"></div>
+        <button class="pay-submit-btn" onclick="processPayPalPayment()" style="background:linear-gradient(135deg,#003087,#009cde);color:#fff;">🅿️ Payer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="cardDesignModal">
+  <div class="card-design-sheet">
+    <div class="card-design-header">
+      <div>
+        <h3>Choisir un design de carte</h3>
+        <p>Exclusif Lago+ • touchez la carte pour la retourner</p>
+      </div>
+      <button class="card-design-close" onclick="closeCardDesignPicker()">✕</button>
+    </div>
+    <div id="cardDesignList" class="card-design-list"></div>
+  </div>
+</div>
+
+<!-- TOS MODAL -->
+<div id="tosModal">
+  <div class="tos-content" id="tosText"></div>
+  <div class="tos-pagination">
+    <button onclick="prevTos()" style="flex:1;padding:12px;margin:0;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);">← Précédent</button>
+    <span style="color:#fff;align-self:center;font-size:12px;">Page <span id="tosPageNum">1</span>/60</span>
+    <button onclick="nextTos()" style="flex:1;padding:12px;margin:0;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);">Suivant →</button>
+  </div>
+  <button onclick="closeTos()" style="margin-top:10px;padding:12px 30px;background:var(--accent-blue);color:#000;border:none;border-radius:100px;font-weight:bold;cursor:pointer;">Fermer</button>
+</div>
+
+<div class="processing-overlay" id="processingOverlay">
+  <div class="processing-spinner" id="processingSpinner"></div>
+  <div class="processing-text" id="processingText">Traitement en cours...</div>
+  <div class="processing-sub" id="processingSub">Ne fermez pas cette fenêtre</div>
+</div>
+
+<div id="paySuccessOverlay">
+  <div class="success-checkmark">✓</div>
+  <div class="success-title">Paiement accepté !</div>
+  <div class="success-amount" id="successAmount">0.00 €</div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
