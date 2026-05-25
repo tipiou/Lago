@@ -475,12 +475,12 @@
       <input type="text" id="adminUserSearch" class="admin-input" placeholder="🔍 Rechercher un client par email..." oninput="renderAdminUsers()" style="margin-bottom:15px;">
       <div id="adminUserList" style="background:rgba(0,0,0,0.2);border-radius:10px;padding:10px;max-height:250px;overflow-y:auto;"></div>
       <div style="margin-top:25px;text-align:left;background:var(--glass-bg);padding:15px;border-radius:15px;border:1px solid var(--glass-border);">
-        <h4 style="margin-top:0;color:var(--text-main);">🎨 Thème</h4>
+        <h4 style="margin-top:0;color:var(--text-main);">🎨 Thème Patron</h4>
         <select id="adminThemeSelect" style="width:100%;padding:8px;border-radius:8px;border:none;background:#fff;color:#000;font-weight:bold;outline:none;">
           <option value="dark">🌙 Nuit</option><option value="light">☀️ Jour</option><option value="neon">👑 Néon Bleu</option><option value="black">👑 Pitch Black</option><option value="glass">👑 Liquide Glace</option>
         </select>
+        <button id="adminLogoutBtn" onclick="forceAdminLogout(event)" onpointerdown="forceAdminLogout(event)" style="background:var(--accent-red);color:#fff;margin-top:15px;border:1px solid rgba(255,255,255,0.18);position:relative;z-index:9999;">🚪 Déconnexion patron</button>
       </div>
-      <button id="adminLogoutBtn" class="admin-logout-standalone" onclick="forceAdminLogout(event)" onpointerdown="forceAdminLogout(event)">Déconnexion</button>
     </div>
   </section>
 
@@ -568,15 +568,15 @@
   <div class="modal-card debug-card">
     <button class="close-modal" onclick="closeDebugPanel()">X</button>
     <h3 style="margin-top:0;color:var(--accent-blue);">🐞 Centre debug discret</h3>
-    <p style="color:var(--text-dim);font-size:12px;margin-top:-6px;">Centre de contrôle interne de l’application.</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-top:-6px;">Outils cachés pour tester l'app sans se prendre la tête.</p>
     <div id="debugStatus" class="debug-status"></div>
     <h4 style="margin:12px 0 6px;color:var(--accent-gold);">Journal patron</h4>
     <div id="debugActionLog" class="debug-action-log"></div>
     <button onclick="debugResetSession()" class="debug-btn">♻️ Remettre cette session à zéro</button>
     <button onclick="debugClearCart()" class="debug-btn">🧺 Vider le panier</button>
     <button onclick="debugToggleVip()" class="debug-btn">👑 Activer / désactiver Lago+</button>
-    <button onclick="debugAddTestCard()" class="debug-btn">💳 Ajouter une carte</button>
-    <button onclick="debugAddTestOrder()" class="debug-btn">🧾 Ajouter une commande</button>
+    <button onclick="debugAddTestCard()" class="debug-btn">💳 Ajouter une carte test</button>
+    <button onclick="debugAddTestOrder()" class="debug-btn">🧪 Ajouter une commande test</button>
     <button onclick="debugRefreshStatus()" class="debug-btn ghost">🔍 Rafraîchir les infos</button>
   </div>
 </div>

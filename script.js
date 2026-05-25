@@ -27,7 +27,7 @@ let reglages = {
   theme:"dark", adminTheme:"dark", isPremium:false, cagnotte:0, cagnotteSpent:0,
   historiqueCommandes:[], moisCoussinGratuit:null,
   caTotal:0, totalOrders:0, users:[], driverApplications:[],
-  promoCodeStr:"FREROT", promoValue:5, promoConfig:{code:"FREROT", percent:20, target:"all", active:true}, easterPromoUnlocked:false, easterPromoUsed:false, adminActionLog:[],
+  promoCodeStr:"FREROT", promoValue:5, promoConfig:{code:"FREROT", percent:20, target:"all", active:true}, adminActionLog:[],
   welcomeText:"On vous livre un vrai lit, tout de suite.", taxeNuit:false, weatherSurge:false,
   avatarUrl:avatarsStandard[0],
   prixSolo:20, ruptureSolo:false, prixDuo:35, ruptureDuo:false,
@@ -137,22 +137,6 @@ const DEFAULT_DRIVER_PHOTO=driverInitialAvatar('L');
 let selectedSavedCardIndex=-1;
 let showingNewCardForm=true;
 
-
-function lockRubberBandScroll(){
-  const scrollables=['clientApp','adminApp','driverApp'].map(id=>document.getElementById(id)).filter(Boolean);
-  scrollables.forEach(el=>{
-    let startY=0;
-    el.addEventListener('touchstart',e=>{ if(e.touches&&e.touches.length) startY=e.touches[0].clientY; },{passive:true});
-    el.addEventListener('touchmove',e=>{
-      if(!e.touches||!e.touches.length) return;
-      const y=e.touches[0].clientY;
-      const atTop=el.scrollTop<=0;
-      const atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-1;
-      if((atTop && y>startY) || (atBottom && y<startY)) e.preventDefault();
-    },{passive:false});
-  });
-}
-
 // =============================================
 // INIT DOM
 // =============================================
@@ -162,7 +146,6 @@ document.addEventListener("DOMContentLoaded", function() {
   initLiquidGlassNav();
   renderCardDesignPicker();
   startSimpleIntro();
-  lockRubberBandScroll();
 });
 
 setInterval(() => {
@@ -501,18 +484,6 @@ function computePromoDiscount(){
   if(base<=0) return 0;
   return Math.round(base*(Number(reglages.promoConfig.percent)||0)/100*100)/100;
 }
-function computeEasterPromoDiscount(){
-  if(!reglages.easterPromoUnlocked || reglages.easterPromoUsed) return 0;
-  let base=0;
-  cart.forEach(c=>{ let bp=(c.basePrice!=null)?Number(c.basePrice):(Number(c.price||0)-((c.options||[]).reduce((a,o)=>a+Number(o.price||0),0))); base+=Math.max(0,bp)*Number(c.qty||1); });
-  return Math.round(base*0.10*100)/100;
-}
-function registerEasterPromoUsageIfNeeded(){
-  if(computeEasterPromoDiscount()>0){
-    reglages.easterPromoUsed=true;
-    reglages.easterPromoUnlocked=false;
-  }
-}
 
 
 // =============================================
@@ -614,7 +585,7 @@ function buildFakeDriverForm(d){
   let parts=(d.name||'Candidat Lago').split(' ');
   return {
     id:'fake-'+idx,
-    email:d.email||`candidat${idx}@lago-recrutement.fr`,
+    email:d.email||`candidat${idx}@lago.fake`,
     photo:d.photo||driverInitialAvatar(parts[0]?.charAt(0)||'L'),
     firstName:parts[0]||'Candidat',
     lastName:parts[1]||'Lago',
@@ -628,68 +599,14 @@ function buildFakeDriverForm(d){
     heavy:['Oui, sans problème','Oui, avec aide si besoin','Plutôt les petits lits'][idx%3],
     motivation:d.bio||'Je suis motivé, ponctuel et disponible pour livrer les clients Lago rapidement.',
     notes:'Profil disponible pour recrutement.',
-    createdAt:'Aujourd’hui'
+    createdAt:'Simulation'
   };
-}
-
-function seedBusinessHistoryIfNeeded(){
-  if(reglages._seededBusinessHistory) return;
-  if(!Array.isArray(fakeUsers) || !Array.isArray(drivers)) return;
-  const items=["Le Solo","Le Duo","Matelas Gonflable","Lit Parapluie"];
-  const amounts=[24.99,39.99,18.99,29.99,44.99,34.99];
-  const comments=["Livraison nickel.","Très rapide, merci !","Livreur sympa.","Commande propre.","Parfait pour la soirée.","Service sérieux."];
-  let totalCA=0, totalOrders=0;
-  let activeDrivers=drivers.filter(d=>!d.fired && d.status!=="Non recruté");
-  fakeUsers.filter(u=>u.id<999).slice(0,85).forEach((u,idx)=>{
-    let nb=idx<25?2:1;
-    if(!Array.isArray(u.historique)) u.historique=[];
-    for(let j=0;j<nb;j++){
-      let prix=amounts[(idx+j)%amounts.length];
-      let item=items[(idx+j)%items.length];
-      let date=`${String(1+((idx+j)%24)).padStart(2,'0')}/05/2026`;
-      u.historique.push({id:Date.now()+idx*10+j,date,prix,items:item,status:"Terminée"});
-      u.orders=(u.orders||0)+1;
-      totalOrders++;
-      totalCA+=Math.round((prix*0.6+2.99+4.99)*100)/100;
-      let d=activeDrivers[(idx+j)%Math.max(activeDrivers.length,1)];
-      if(d){
-        d.totalOrders=(d.totalOrders||0)+1;
-        d.earnings=(Number(d.earnings)||0)+Math.round(prix*0.4*100)/100;
-        d.tips=(Number(d.tips)||0)+((idx+j)%4===0?2:0);
-        let stars=4+((idx+j)%2);
-        if(!Array.isArray(d.comments)) d.comments=[];
-        d.comments.push({date,email:u.email,rating:stars,text:comments[(idx+j)%comments.length]});
-        d.votes=(d.votes||0)+1;
-        let oldRating=Number(d.rating)||5;
-        d.rating=Math.round(((oldRating*(d.votes-1))+stars)/d.votes*10)/10;
-      }
-    }
-    if(idx%18===0 && !u.isVip){ u.isVip=true; u.vipSource='purchased'; totalCA+=59.99; }
-  });
-  reglages.caTotal=Math.max(2500,Math.round(totalCA*100)/100);
-  reglages.totalOrders=Math.max(85,totalOrders);
-  reglages._seededBusinessHistory=true;
-}
-function getDebugTargetUser(){
-  if(window.currentUser && window.currentUser.role!=='admin') return window.currentUser;
-  return fakeUsers.find(u=>u.email==='client@gmail.com') || fakeUsers.find(u=>u.id===999) || fakeUsers[0];
-}
-function syncSessionFromTargetUser(u){
-  if(!u) return;
-  if(window.currentUser && window.currentUser.role!=='admin' && window.currentUser.email===u.email){
-    reglages.isPremium=!!u.isVip;
-    reglages.historiqueCommandes=Array.isArray(u.historique)?u.historique:[];
-    reglages.savedCards=Array.isArray(u.savedCards)?u.savedCards:[];
-    reglages.cagnotte=Number(u.cagnotte)||0;
-    reglages.cagnotteSpent=Number(u.cagnotteSpent)||0;
-    reglages.avatarUrl=u.avatarUrl||reglages.avatarUrl;
-  }
 }
 function ensureDriverDataConsistency(){
   if(!Array.isArray(reglages.driverApplications)) reglages.driverApplications=[];
   drivers.forEach((d,i)=>{
     if(!d.photo) d.photo=driverInitialAvatar((d.name||'L').charAt(0));
-    if(!d.email) d.email=`driver${d.id||i}@lago.fr`;
+    if(!d.email) d.email=`driver${d.id||i}@lago.fake`;
     if(!d.password) d.password='123';
     if(!d.status) d.status=i<12?'En attente':'Non recruté';
     if(!d.fakeForm) d.fakeForm=buildFakeDriverForm(d);
@@ -713,7 +630,6 @@ reglages.drivers=drivers;
 if(!Array.isArray(reglages.driverApplications)) reglages.driverApplications=[];
 if(typeof reglages.driverRecruitmentClosed!=='boolean') reglages.driverRecruitmentClosed=false;
 ensureDriverDataConsistency();
-seedBusinessHistoryIfNeeded();
 
 function normalizeUsersCards() {
   if(Array.isArray(reglages.savedCards)) reglages.savedCards.forEach(c=>{ if(!c.design) c.design='classic'; c.design=normalizeCardDesignId(c.design); });
@@ -737,15 +653,12 @@ function normalizePromoConfig(){
   reglages.promoConfig.usageCount=Math.max(0,Number(reglages.promoConfig.usageCount)||0);
   reglages.promoCodeStr=reglages.promoConfig.code;
   reglages.promoValue=reglages.promoConfig.percent;
-  if(typeof reglages.easterPromoUnlocked!=="boolean") reglages.easterPromoUnlocked=false;
-  if(typeof reglages.easterPromoUsed!=="boolean") reglages.easterPromoUsed=false;
 }
 normalizePromoConfig();
 function normalizeAllData(){
   normalizeUsersCards();
   normalizePromoConfig();
   ensureDriverDataConsistency();
-  seedBusinessHistoryIfNeeded();
   if(!Array.isArray(reglages.historiqueCommandes)) reglages.historiqueCommandes=[];
   if(!Array.isArray(reglages.adminActionLog)) reglages.adminActionLog=[];
   if(!Array.isArray(reglages.driverApplications)) reglages.driverApplications=[];
@@ -893,52 +806,26 @@ window.debugRefreshStatus=function(){
   el.innerHTML=`<b>Version :</b> ${APP_VERSION}<br><b>Utilisateur :</b> ${user}<br><b>Lago+ :</b> ${reglages.isPremium?'oui':'non'}<br><b>Thème :</b> ${reglages.theme}<br><b>Panier :</b> ${cart.length} élément(s)<br><b>Paiement :</b> ${pendingPaymentCallback?'en attente':'repos'}<br><b>Livraison :</b> ${deliveryInProgress?'en cours':'aucune'}<br><b>Promo :</b> ${promo}<br><b>Cartes session :</b> ${cards}<br><b>Recrutements :</b> ${candidates} candidat(s)<br><b>Livreurs :</b> ${drivers.filter(d=>!d.fired&&d.status!=="Non recruté").length} actifs`;
   renderDebugActionLog();
 };
-window.interneClearCart=function(){
-  if(!confirm('Vider le panier ?')) return;
+window.debugClearCart=function(){
+  if(!confirm('Vider le panier de test ?')) return;
   cart=[]; selectedMattress=null; promoActive=false; currentTip=0; currentCagnotteDeduction=0;
   document.querySelectorAll('.mattress,.option,.tip-btn').forEach(el=>el.classList.remove('selected'));
   updateCart(); debugRefreshStatus();
 };
 window.debugAddTestCard=function(){
-  let u=getDebugTargetUser();
-  if(!u) return alert('Aucun client disponible.');
-  if(!Array.isArray(u.savedCards)) u.savedCards=[];
-  let design=CARD_DESIGNS[Math.floor(Math.random()*CARD_DESIGNS.length)].id;
-  u.savedCards.push({type:'Visa',last4:String(Math.floor(1000+Math.random()*9000)),holder:'CLIENT LAGO',expiry:'12/29',design});
-  syncSessionFromTargetUser(u);
+  if(!Array.isArray(reglages.savedCards)) reglages.savedCards=[];
+  reglages.savedCards.push({type:'Visa',last4:String(Math.floor(1000+Math.random()*9000)),holder:'TEST LAGO',expiry:'12/29',design:CARD_DESIGNS[Math.floor(Math.random()*CARD_DESIGNS.length)].id});
   normalizeAllData(); renderSavedCards(); saveAll(); debugRefreshStatus();
-  alert(`Carte ajoutée sur ${u.email}`);
 };
 window.debugAddTestOrder=function(){
-  let u=getDebugTargetUser();
-  if(!u) return alert('Aucun client disponible.');
-  if(!Array.isArray(u.historique)) u.historique=[];
-  let price=39.99;
-  u.historique.push({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),prix:price,items:'Commande',status:'Terminée'});
-  u.orders=(u.orders||0)+1;
-  reglages.caTotal=Math.round(((Number(reglages.caTotal)||0)+(price*0.6)+2.99+4.99)*100)/100;
-  reglages.totalOrders=(Number(reglages.totalOrders)||0)+1;
-  let d=getAvailableDriver(!!u.isVip);
-  if(d){
-    d.totalOrders=(d.totalOrders||0)+1;
-    d.earnings=(Number(d.earnings)||0)+Math.round(price*0.4*100)/100;
-    d.votes=(d.votes||0)+1;
-    d.rating=Math.round((((Number(d.rating)||5)*(d.votes-1))+5)/d.votes*10)/10;
-    if(!Array.isArray(d.comments)) d.comments=[];
-    d.comments.push({date:new Date().toLocaleDateString('fr-FR'),email:u.email,rating:5,text:'Commande validée.'});
-  }
-  syncSessionFromTargetUser(u);
-  mettreAJourHistorique(); renderClientStats(); updateAdminStats(); renderAdminUsers(); renderAdminDrivers(); saveAll(); debugRefreshStatus();
-  alert(`Commande ajoutée sur ${u.email}`);
+  if(!Array.isArray(reglages.historiqueCommandes)) reglages.historiqueCommandes=[];
+  reglages.historiqueCommandes.push({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),prix:29.99,items:'Commande test',status:'Terminée'});
+  mettreAJourHistorique(); renderClientStats(); saveAll(); debugRefreshStatus();
 };
 window.debugToggleVip=function(){
-  let u=getDebugTargetUser();
-  if(!u) return alert('Aucun client disponible.');
-  u.isVip=!u.isVip; u.vipSource=u.isVip?'interne':null;
-  if(u.isVip) reglages.caTotal=Math.round(((Number(reglages.caTotal)||0)+59.99)*100)/100;
-  syncSessionFromTargetUser(u);
-  appliquerAvatarEtPremium(); appliquerThemeEtPremium(); mettreAJourVitrine(); updateCart(); updateAdminStats(); renderAdminUsers(); saveAll(); debugRefreshStatus();
-  alert(`Lago+ ${u.isVip?'activé':'désactivé'} pour ${u.email}`);
+  reglages.isPremium=!reglages.isPremium;
+  if(window.currentUser&&window.currentUser.role!=='admin') window.currentUser.isVip=reglages.isPremium;
+  appliquerAvatarEtPremium(); appliquerThemeEtPremium(); mettreAJourVitrine(); updateCart(); saveAll(); debugRefreshStatus();
 };
 window.debugResetSession=function(){ if(!confirm('Remettre la session à zéro ?')) return; 
   try{ sessionStorage.removeItem(APP_STORAGE_KEY); localStorage.removeItem(LEGACY_STORAGE_KEY); }catch(_e){}
@@ -1028,7 +915,7 @@ function doLogin(email) {
       document.getElementById('clientEmailDisplay').innerText=email;
       cartDistance=(Math.random()*(6.5-0.5)+0.5).toFixed(1);
       mettreAJourVitrine(); appliquerAvatarEtPremium(); appliquerThemeEtPremium();
-      mettreAJourHistorique(); renderReferrals(); updateCart(); updateClientNavIndicator(); updatePaymentCardPreview(); startBot();
+      mettreAJourHistorique(); renderReferrals(); updateCart(); updateClientNavIndicator(); updatePaymentCardPreview();
     }
   },300);
 }
@@ -1283,20 +1170,9 @@ function renderTosPage(){
     let code=`LAGO-${String(currentTosPage).padStart(2,'0')}-${i+1}`;
     text+=`<p style="margin-bottom:10px;"><b>Alinéa ${currentTosPage}.${i+1} :</b> Le prestataire Lago applique la clause ${code} pour garantir une livraison de lit claire, drôle et stable. Les conditions restent identiques à chaque ouverture de cette page.</p>`;
   }
-  if(currentTosPage===60 && !reglages.easterPromoUnlocked && !reglages.easterPromoUsed){
-    text+=`<div class="easter-bed-secret" onclick="claimEasterPromo()" title="Petit bonus Lago"><div class="easter-bed-icon"><span></span></div><small>Un détail s'est glissé ici.</small></div>`;
-  }
   document.getElementById('tosText').innerHTML=text;
   document.getElementById('tosText').scrollTop=0;
 }
-window.claimEasterPromo=function(){
-  if(reglages.easterPromoUsed) return;
-  reglages.easterPromoUnlocked=true;
-  saveAll();
-  renderTosPage();
-  updateCart();
-  alert("Bonus Lago trouvé : -10% sur votre prochaine commande.");
-};
 
 // =============================================
 // CARTES SAUVEGARDÉES (PROFIL)
@@ -1322,8 +1198,12 @@ window.deleteSavedCard=(i)=>{ if(!confirm('Supprimer cette carte ?')) return; re
 
 
 function renderClientStats(){
-  let box=document.getElementById('clientStatsBox');
-  if(box) box.innerHTML='';
+  let box=document.getElementById('clientStatsBox'); if(!box) return;
+  let hist=Array.isArray(reglages.historiqueCommandes)?reglages.historiqueCommandes:[];
+  let spent=hist.reduce((a,c)=>a+(Number(c.prix)||0),0);
+  let saved=Math.round(spent*0.15*100)/100;
+  let cards=Array.isArray(reglages.savedCards)?reglages.savedCards.length:0;
+  box.innerHTML=`<div><strong>${hist.length}</strong><span>commandes</span></div><div><strong>${spent.toFixed(2)}€</strong><span>dépensés</span></div><div><strong>${saved.toFixed(2)}€</strong><span>économisés</span></div><div><strong>${cards}</strong><span>cartes</span></div>`;
 }
 // =============================================
 // PARRAINAGE
@@ -1407,8 +1287,7 @@ function startBot(){
     drivers.filter(d=>!d.fired&&d.status!=="Non recruté").forEach(d=>{ if(d.status==="En livraison 🛵") d.status="En attente"; });
     let items=["Le Duo","Le Solo","Lit Parapluie","Le Gonflable"]; let prices=[reglages.prixDuo,reglages.prixSolo,reglages.prixBebe,reglages.prixGonflable];
     let idx=Math.floor(Math.random()*items.length); let price=Number(prices[idx]);
-    let isNewVip=!usr.isVip&&Math.random()>0.88;
-    if(isNewVip){ usr.isVip=true; usr.vipSource='purchased'; }
+    let isNewVip=usr.isVip&&Math.random()>0.7;
     let cutPatron=(price*0.6)+(isNewVip?59.99:0); let totalDisplayPrice=price+(isNewVip?59.99:0);
     reglages.caTotal+=cutPatron; reglages.totalOrders++; usr.orders++;
     let d2=new Date();
@@ -1436,18 +1315,11 @@ function startBot(){
       if(d.status!=="En livraison 🛵"){ let r=Math.random(); if(r<0.7) d.status="En attente"; else if(r<0.9) d.status="En pause ☕"; else d.status="Retard ⚠️"; }
     });
     renderAdminDrivers();
-    renderAdminUsers();
-    if(window.currentOpenUserId===usr.id){ openUserModal(usr.id); }
+    if(window.currentOpenUserId===usr.id){ openUserModal(usr.id); renderAdminUsers(); }
     let notif=document.createElement('div'); notif.className='admin-toast';
     notif.innerHTML=`🔔 <b>${usr.email.split('@')[0]}</b> a commandé <b>${items[idx]}</b> (+${totalDisplayPrice.toFixed(2)}€)<br><span style="font-size:11px;">🛵 Livré par: <b>${assignedD?assignedD.name:'Inconnu'}</b></span>${botTip>0?`<br><span style="color:var(--accent-green);font-size:11px;">💰 Pourboire +${botTip}€</span>`:''}${isNewVip?`<br><span style="color:var(--accent-gold);font-size:11px;">👑 Abonnement VIP inclus !</span>`:''}`;
-    let toastBox=document.getElementById('adminToastContainer');
-    if(toastBox && document.getElementById('adminApp').style.display==='block'){
-      toastBox.appendChild(notif);
-      setTimeout(()=>{ notif.style.opacity='0'; setTimeout(()=>notif.remove(),400); },5000);
-    }
-    if(window.currentUser && window.currentUser.role!=='admin' && window.currentUser.email===usr.email){
-      reglages.historiqueCommandes=usr.historique||[]; reglages.isPremium=!!usr.isVip; mettreAJourHistorique(); appliquerAvatarEtPremium(); mettreAJourVitrine(); updateCart();
-    }
+    document.getElementById('adminToastContainer').appendChild(notif);
+    setTimeout(()=>{ notif.style.opacity='0'; setTimeout(()=>notif.remove(),400); },5000);
     saveAll();
   },8000);
 }
@@ -1774,35 +1646,12 @@ window.toggleScheduleInput=function(){
   else{ input.style.display='none'; document.getElementById('tipSection').style.display='block'; }
 };
 
-function getMattressDemandCount(name){
-  let count=0;
-  (fakeUsers||[]).forEach(u=>{
-    (u.historique||[]).forEach(h=>{ if((h.items||'').includes(name)) count++; });
-  });
-  (reglages.historiqueCommandes||[]).forEach(h=>{ if((h.items||'').includes(name)) count++; });
-  cart.forEach(c=>{ if(c.name===name) count+=c.qty; });
-  return count;
-}
-function updateMattressDemandPills(){
-  document.querySelectorAll('.demand-pill').forEach(el=>{
-    let name=el.dataset.mattress;
-    let count=getMattressDemandCount(name);
-    if(count>=18) el.innerText='Très commandé aujourd’hui';
-    else if(count>=10) el.innerText='Populaire ce soir';
-    else if(count>=5) el.innerText='Demandé en ce moment';
-    else el.innerText='Disponible maintenant';
-  });
-}
 function updateCart(){
-  updateMattressDemandPills();
   document.getElementById('cartCount').textContent=cart.reduce((acc,c)=>acc+c.qty,0);
   let list=document.getElementById('cartList'); let sousTotalLitsOptions=0;
   list.innerHTML=""; currentCagnotteDeduction=0;
   if(cart.length===0){
-    promoActive=false;
-    let pm=document.getElementById('promoMessage');
-    if(reglages.easterPromoUnlocked && !reglages.easterPromoUsed){ pm.innerText="Bonus Lago trouvé : -10% sur votre prochaine commande."; pm.style.display="block"; }
-    else { pm.style.display="none"; document.getElementById('promoInput').value=""; }
+    promoActive=false; document.getElementById('promoMessage').style.display="none"; document.getElementById('promoInput').value="";
     list.innerHTML="<p style='color:var(--text-dim)'>Panier vide.</p>";
     document.getElementById('factureDetails').style.display="none";
     document.getElementById('scheduleSection').style.display="none";
@@ -1829,8 +1678,6 @@ function updateCart(){
   if(reglages.taxeNuit){ let t=Math.round(sousTotalLitsOptions*0.20*100)/100; dynDiv.innerHTML+=`<div class="cartItem" style="color:var(--accent-blue);margin-top:10px;"><span>🌙 Surtaxe de Nuit (20%)</span><span>+ ${t.toFixed(2)} €</span></div>`; total+=t; }
   if(reglages.weatherSurge){ let s=Math.round(sousTotalLitsOptions*0.25*100)/100; dynDiv.innerHTML+=`<div class="cartItem" style="color:var(--accent-blue);margin-top:5px;"><span>🌧️ Forte demande (+25%)</span><span>+ ${s.toFixed(2)} €</span></div>`; total+=s; }
   if(promoActive){ let pv=computePromoDiscount(); if(pv>0){ total-=pv; dynDiv.innerHTML+=`<div class="cartItem discount" style="margin-top:10px;"><span>Promo ${reglages.promoConfig.code} (-${reglages.promoConfig.percent}%)</span><span>-${pv.toFixed(2)} €</span></div>`; let msg=document.getElementById('promoMessage'); if(msg){ msg.innerText=`Code appliqué : -${pv.toFixed(2)} €`; msg.style.display="block"; } } else { promoActive=false; document.getElementById('promoMessage').style.display="none"; } }
-  let easterDisc=computeEasterPromoDiscount();
-  if(easterDisc>0){ total-=easterDisc; dynDiv.innerHTML+=`<div class="cartItem discount easter-discount" style="margin-top:10px;"><span>Bonus Lago (-10%)</span><span>-${easterDisc.toFixed(2)} €</span></div>`; let msg=document.getElementById('promoMessage'); if(msg){ msg.innerText=`Bonus Lago appliqué : -${easterDisc.toFixed(2)} €`; msg.style.display="block"; } }
   total=Math.round(Math.max(0,total)*100)/100;
   let divCag=document.getElementById('useCagnotteDiv'); let checkCag=document.getElementById('useCagnotteCheck');
   if(reglages.isPremium&&reglages.cagnotte>0){
@@ -2076,7 +1923,6 @@ document.getElementById('payBtn').onclick=()=>{
     let cutDriver=sousTotalLits*0.4;
     let cutPatron=(sousTotalLits*0.6)+(reglages.isPremium&&cartDistance<=3.0?0:4.99)+2.99;
     if(promoActive) cutPatron-=computePromoDiscount();
-    cutPatron-=computeEasterPromoDiscount();
     if(reglages.isPremium) cutPatron-=Math.round(sousTotalLits*0.15*100)/100;
     if(reglages.taxeNuit) cutPatron+=Math.round(sousTotalLits*0.20*100)/100;
     if(reglages.weatherSurge) cutPatron+=Math.round(sousTotalLits*0.25*100)/100;
@@ -2087,7 +1933,7 @@ document.getElementById('payBtn').onclick=()=>{
       let d2=new Date(); let dateStr=d2.toLocaleDateString('fr-FR');
       reglages.historiqueCommandes.push({id:Date.now(),date:dateStr,scheduledTime,prix:finalPrice,items:resumeItems,status:"En cours",cagnotteUsed:currentCagnotteDeduction});
       reglages.caTotal+=Math.max(0,cutPatron); reglages.totalOrders++;
-      registerPromoUsageIfNeeded(); registerEasterPromoUsageIfNeeded();
+      registerPromoUsageIfNeeded();
       updateAdminStats(); cart=[]; promoActive=false; currentTip=0;
       document.querySelectorAll('.tip-btn').forEach(b=>b.classList.remove('selected'));
       document.getElementById('promoMessage').style.display="none"; document.getElementById('promoInput').value="";
@@ -2158,7 +2004,6 @@ document.getElementById('payBtn').onclick=()=>{
       reglages.historiqueCommandes.push({id:Date.now(),date:ds,prix:finalPrice,items:resumeItems,status:"Terminée"});
       mettreAJourHistorique(); reglages.caTotal+=Math.max(0,cutPatron); reglages.totalOrders++;
       addAdminActionLog("Commande terminée",Math.max(0,cutPatron));
-      registerPromoUsageIfNeeded(); registerEasterPromoUsageIfNeeded();
       updateAdminStats(); cart=[]; promoActive=false; currentTip=0;
       document.querySelectorAll('.tip-btn').forEach(b=>b.classList.remove('selected'));
       document.getElementById('promoMessage').style.display="none"; document.getElementById('promoInput').value="";
@@ -2293,7 +2138,7 @@ window.openDriverPoolApplicationModal=function(id){
       <b>Disponibilités :</b> ${a.availability||'Non renseignées'}<br>
       <b>Zone :</b> ${a.area||'Non renseignée'}<br>
       <b>Port de matelas :</b> ${a.heavy||'Non renseigné'}<br>
-      <b>Date :</b> ${a.createdAt||'Aujourd’hui'}
+      <b>Date :</b> ${a.createdAt||'Simulation'}
     </div>
     <h4 style="color:white;text-align:left;">Réponses du formulaire</h4>
     <div class="driver-form-mini"><b>Motivation :</b><br>${String(a.motivation||d.bio||'Motivé pour rejoindre Lago.').replace(/</g,'&lt;')}<br><br><b>Infos en plus :</b><br>${String(a.notes||'Aucune note.').replace(/</g,'&lt;')}</div>
@@ -2337,13 +2182,14 @@ function updateAdminStats(){
   document.getElementById('statsCATotal').innerText=ca.toFixed(2)+" €";
   document.getElementById('statsTotalOrders').innerText=(reglages.totalOrders||0);
   let trend=document.getElementById('statsTrendIndicator');
-  if(lastCATrendBase===null || typeof lastCATrendBase==='undefined') lastCATrendBase=ca;
   if(trend){
     let base=lastCATrendBase;
+    if(base===null || typeof base==='undefined') base=0;
     let diff=Math.round((ca-base)*100)/100;
     trend.className='stats-trend '+(diff<0?'loss':(diff>0?'gain':'neutral'));
     trend.innerText=(diff<0?`↘ ${diff.toFixed(2)} €`:(diff>0?`↗ +${diff.toFixed(2)} €`:'→ 0.00 €'))+' depuis l’ouverture';
   }
+  lastCATrendBase=ca;
 }
 
 // =============================================
@@ -2376,111 +2222,3 @@ window.openClientGPS=function(){
 
 // Intro Lago simple, épurée, sans thème saisonnier
 function startSimpleIntro(){}
-
-// =============================================
-// V28 — Anti rebond iPhone / haut toujours collé
-// =============================================
-(function(){
-  let startY = 0;
-  let activeScrollable = null;
-
-  function isScrollable(el){
-    if(!el || el === document || el === window) return false;
-    let style = window.getComputedStyle(el);
-    let canScroll = /(auto|scroll)/.test(style.overflowY);
-    return canScroll && el.scrollHeight > el.clientHeight + 1;
-  }
-
-  function getScrollableFrom(target){
-    let el = target;
-    while(el && el !== document.body){
-      if(isScrollable(el)) return el;
-      el = el.parentElement;
-    }
-    return document.querySelector('.app-wrapper[style*="block"]') ||
-           document.querySelector('#clientApp[style*="block"]') ||
-           document.querySelector('#adminApp[style*="block"]') ||
-           document.querySelector('#driverApp[style*="block"]') ||
-           document.querySelector('.app-wrapper');
-  }
-
-  document.addEventListener('touchstart', function(e){
-    if(!e.touches || !e.touches.length) return;
-    startY = e.touches[0].clientY;
-    activeScrollable = getScrollableFrom(e.target);
-  }, {passive:true});
-
-  document.addEventListener('touchmove', function(e){
-    if(!e.touches || !e.touches.length) return;
-    const y = e.touches[0].clientY;
-    const deltaY = y - startY;
-    const scroller = activeScrollable || getScrollableFrom(e.target);
-    if(!scroller){
-      e.preventDefault();
-      return;
-    }
-
-    const atTop = scroller.scrollTop <= 0;
-    const atBottom = Math.ceil(scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight;
-
-    // Tirer vers le bas quand on est déjà en haut : interdit.
-    if(atTop && deltaY > 0){
-      scroller.scrollTop = 0;
-      e.preventDefault();
-      return;
-    }
-
-    // Pousser vers le haut quand on est déjà en bas : interdit aussi.
-    if(atBottom && deltaY < 0){
-      scroller.scrollTop = scroller.scrollHeight;
-      e.preventDefault();
-    }
-  }, {passive:false});
-
-  window.addEventListener('scroll', function(){
-    if(window.scrollY !== 0) window.scrollTo(0,0);
-  }, {passive:false});
-})();
-
-// =============================================
-// V29 — verrouillage de la barre client en bas
-// =============================================
-(function(){
-  function pinClientNav(){
-    const nav=document.getElementById('clientNav');
-    const app=document.getElementById('clientApp');
-    if(!nav || !app || nav.style.display==='none' || getComputedStyle(app).display==='none') return;
-    nav.style.transform='translateZ(0)';
-    const bottomGap=25;
-    const targetBottom=(window.innerHeight||document.documentElement.clientHeight)-bottomGap;
-    const rect=nav.getBoundingClientRect();
-    const diff=targetBottom-rect.bottom;
-    if(Math.abs(diff)>2){
-      nav.style.transform=`translateY(${diff}px) translateZ(0)`;
-    }
-  }
-  window.pinClientNav=pinClientNav;
-  function bind(){
-    const app=document.getElementById('clientApp');
-    if(app && !app.dataset.navPinned){
-      app.dataset.navPinned='1';
-      app.addEventListener('scroll',()=>requestAnimationFrame(pinClientNav),{passive:true});
-      app.addEventListener('touchmove',()=>requestAnimationFrame(pinClientNav),{passive:true});
-    }
-    window.addEventListener('resize',()=>requestAnimationFrame(pinClientNav),{passive:true});
-    window.addEventListener('orientationchange',()=>setTimeout(pinClientNav,150),{passive:true});
-    setInterval(pinClientNav,700);
-    setTimeout(pinClientNav,100);
-    setTimeout(pinClientNav,600);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
-  else bind();
-  const oldSwitch=window.switchClientTab;
-  if(typeof oldSwitch==='function'){
-    window.switchClientTab=function(tabId,btn){
-      oldSwitch(tabId,btn);
-      setTimeout(pinClientNav,30);
-      setTimeout(pinClientNav,220);
-    };
-  }
-})();
